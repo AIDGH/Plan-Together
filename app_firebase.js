@@ -1,13 +1,22 @@
-// وارد کردن کتابخونه سوپابیس
-import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
+// اضافه شدن کتابخونه‌های لاگین فایربیس
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 
-// 👇👇 کلیدهای سوپابیس خودت رو اینجا بذار 👇👇
-const supabaseUrl = 'https://sxlxmtbaffwvtsucmgdj.supabase.co';
-const supabaseKey = 'sb_publishable_aBoRxCDcW50xChZEUPeHTw_fq8Rp-MA';
-// 👆👆 👆👆
-const supabase = createClient(supabaseUrl, supabaseKey);
+const firebaseConfig = {
+  apiKey: "AIzaSyAt078tZnmbzkgHPWXd6oG7siMTuEFGSt8",
+  authDomain: "planner-eed1e.firebaseapp.com",
+  projectId: "planner-eed1e",
+  storageBucket: "planner-eed1e.firebasestorage.app",
+  messagingSenderId: "301576214173",
+  appId: "1:301576214173:web:9ae2de1a45ce69d5536674"
+};
 
-// === توابع تاریخ (دقیقاً مثل قبل) ===
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const auth = getAuth(app); // راه‌اندازی سیستم لاگین
+
+// === توابع تاریخ ===
 const today = new Date();
 const formatDate = (date) => {
     const d = new Date(date);
@@ -28,6 +37,26 @@ const getShamsiParts = (date) => {
     });
     return { y, m, d };
 };
+// === کدهای نمایش/مخفی کردن پسورد ===
+const togglePassBtn = document.getElementById('toggle-pass-btn');
+const passInput = document.getElementById('login-pass');
+
+// کدهای SVG برای چشم باز و چشم خط‌خورده
+const eyeOpenSVG = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" width="20" height="20"><path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>`;
+const eyeClosedSVG = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" width="20" height="20"><path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" /></svg>`;
+
+togglePassBtn.addEventListener('click', () => {
+    // اگه رمز مخفیه، نشونش بده و آیکون رو خط‌دار کن
+    if (passInput.type === 'password') {
+        passInput.type = 'text';
+        togglePassBtn.innerHTML = eyeClosedSVG;
+    } 
+    // اگه رمز مشخصه، دوباره مخفیش کن و آیکون رو برگردون
+    else {
+        passInput.type = 'password';
+        togglePassBtn.innerHTML = eyeOpenSVG;
+    }
+});
 
 const faMonthNames = ["فروردین", "اردیبهشت", "خرداد", "تیر", "مرداد", "شهریور", "مهر", "آبان", "آذر", "دی", "بهمن", "اسفند"];
 const enMonthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -54,79 +83,62 @@ const weekDaysArr = Array.from({length: 7}).map((_, i) => { const d = new Date(s
 
 let allTasks = [];
 let activeMonthlyUser = 'arad'; 
-let realtimeChannel = null;
+let unsubscribeFromDB = null; // متغیری برای قطع کردن اتصال دیتابیس وقتی خارج میشید
 
-// === کدهای نمایش/مخفی کردن پسورد ===
-const togglePassBtn = document.getElementById('toggle-pass-btn');
-const passInput = document.getElementById('login-pass');
-const eyeOpenSVG = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" width="20" height="20"><path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>`;
-const eyeClosedSVG = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" width="20" height="20"><path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" /></svg>`;
-
-togglePassBtn.addEventListener('click', () => {
-    if (passInput.type === 'password') { passInput.type = 'text'; togglePassBtn.innerHTML = eyeClosedSVG; } 
-    else { passInput.type = 'password'; togglePassBtn.innerHTML = eyeOpenSVG; }
-});
-
-// === سیستم ورود و خروج سوپابیس ===
+// === سیستم ورود و خروج ===
 const loginScreen = document.getElementById('login-screen');
 const appNav = document.getElementById('app-nav');
 const appMain = document.getElementById('app-main');
 const errorMsg = document.getElementById('login-error');
 
 document.getElementById('login-btn').addEventListener('click', async () => {
-    const email = document.getElementById('login-email').value.trim();
-    const pass = passInput.value;
-    errorMsg.style.display = 'none';
-    
-    const { error } = await supabase.auth.signInWithPassword({ email, password: pass });
-    if (error) { errorMsg.style.display = 'block'; }
+    const email = document.getElementById('login-email').value;
+    const pass = document.getElementById('login-pass').value;
+    try {
+        errorMsg.style.display = 'none';
+        await signInWithEmailAndPassword(auth, email, pass);
+    } catch (error) {
+        errorMsg.style.display = 'block'; // ارور در صورت اشتباه بودن رمز
+    }
 });
 
 document.getElementById('logout-btn').addEventListener('click', async () => {
-    await supabase.auth.signOut();
-    window.location.reload();
+    try {
+        // ۱. پاک کردن توکن و نشست از فایربیس
+        await signOut(auth);
+        
+        // ۲. رفرش کردن اجباری کل صفحه برای پاک شدن کش و برگشتن قطعی به صفحه ورود
+        window.location.reload(); 
+    } catch (error) {
+        console.error("ارور موقع خروج: ", error);
+        alert("یه مشکلی تو خروج پیش اومد! 😟");
+    }
 });
 
-// مدیریت Session و گرفتن اطلاعات
-supabase.auth.onAuthStateChange((event, session) => {
-    if (session) {
+// گوش دادن به وضعیت لاگین
+onAuthStateChanged(auth, (user) => {
+    if (user) {
+        // لاگین شد! مخفی کردن صفحه ورود و نمایش پلنر
         loginScreen.classList.add('hidden-app');
         appNav.classList.remove('hidden-app');
         appMain.classList.remove('hidden-app');
-        fetchInitialTasksAndSubscribe();
+
+        // وصل شدن به دیتابیس فقط در صورت لاگین بودن
+        unsubscribeFromDB = onSnapshot(collection(db, "tasks"), (snapshot) => {
+            allTasks = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            allTasks.sort((a, b) => a.createdAt - b.createdAt);
+            renderAll();
+        });
     } else {
+        // خارج شد! نمایش مجدد صفحه ورود
         loginScreen.classList.remove('hidden-app');
         appNav.classList.add('hidden-app');
         appMain.classList.add('hidden-app');
-        if (realtimeChannel) { supabase.removeChannel(realtimeChannel); realtimeChannel = null; }
+        
+        // قطع اتصال از دیتابیس برای امنیت
+        if (unsubscribeFromDB) unsubscribeFromDB();
     }
 });
-
-// تابع گرفتن اطلاعات و گوش دادن به تغییرات زنده
-async function fetchInitialTasksAndSubscribe() {
-    const { data, error } = await supabase.from('tasks').select('*').order('createdAt', { ascending: true });
-    if (!error) {
-        allTasks = data;
-        renderAll();
-    }
-
-    if (!realtimeChannel) {
-        realtimeChannel = supabase.channel('custom-all-channel')
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, payload => {
-                if (payload.eventType === 'INSERT') {
-                    allTasks.push(payload.new);
-                } else if (payload.eventType === 'UPDATE') {
-                    const idx = allTasks.findIndex(t => t.id === payload.new.id);
-                    if (idx > -1) allTasks[idx] = payload.new;
-                } else if (payload.eventType === 'DELETE') {
-                    allTasks = allTasks.filter(t => t.id !== payload.old.id);
-                }
-                allTasks.sort((a, b) => a.createdAt - b.createdAt);
-                renderAll();
-            })
-            .subscribe();
-    }
-}
 
 // نویگیشن تب‌ها
 document.querySelectorAll('.nav-btn:not(#logout-btn)').forEach(btn => {
@@ -141,14 +153,9 @@ document.querySelectorAll('.nav-btn:not(#logout-btn)').forEach(btn => {
     });
 });
 
-// === عملیات‌های دیتابیس (CRUD) ===
 async function saveTask(text, owner, type, dateString = null) {
     if (!text.trim()) return;
-    await supabase.from('tasks').insert([{ 
-        text, owner, type, date: dateString, 
-        weekId: currentWeekStr, monthId: `${currentShamsi.y}-${currentShamsi.m}`, 
-        completed: false, createdAt: Date.now() 
-    }]);
+    await addDoc(collection(db, "tasks"), { text, owner, type, date: dateString, weekId: currentWeekStr, monthId: `${currentShamsi.y}-${currentShamsi.m}`, completed: false, createdAt: Date.now() });
 }
 
 function createItem(task) {
@@ -160,16 +167,11 @@ function createItem(task) {
     
     div.appendChild(delBtn); div.appendChild(rightContent);
 
-    rightContent.querySelector('input').addEventListener('change', async (e) => { 
-        await supabase.from('tasks').update({ completed: e.target.checked }).eq('id', task.id);
-    });
-    delBtn.addEventListener('click', async () => { 
-        await supabase.from('tasks').delete().eq('id', task.id); 
-    });
+    rightContent.querySelector('input').addEventListener('change', async (e) => { await updateDoc(doc(db, "tasks", task.id), { completed: e.target.checked }); });
+    delBtn.addEventListener('click', async () => { await deleteDoc(doc(db, "tasks", task.id)); });
     return div;
 }
 
-// ثبت رویداد دکمه‌های اضافه کردن تسک
 document.getElementById('arad-daily-btn').addEventListener('click', () => { saveTask(document.getElementById('arad-daily-input').value, 'arad', 'date', todayStr); document.getElementById('arad-daily-input').value = ''; });
 document.getElementById('dorsa-daily-btn').addEventListener('click', () => { saveTask(document.getElementById('dorsa-daily-input').value, 'dorsa', 'date', todayStr); document.getElementById('dorsa-daily-input').value = ''; });
 document.getElementById('w-f-arad').addEventListener('click', () => { saveTask(document.getElementById('weekly-float-input').value, 'arad', 'floating'); document.getElementById('weekly-float-input').value = ''; });
