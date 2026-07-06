@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- تعریف گرادیانت خفن با رنگ‌های خودت -->
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#71f6ff" />
+      <stop offset="100%" stop-color="#ffc4de" />
+    </linearGradient>
+  </defs>
+
+  <!-- پس‌زمینه اصلی لوگو -->
+  <rect x="5" y="5" width="90" height="90" rx="22" fill="url(#bgGrad)"/>
+
+  <!-- برگه سفید تقویم -->
+  <rect x="22" y="30" width="56" height="48" rx="6" fill="#ffffff" />
+  
+  <!-- هدر صورتی بالای تقویم -->
+  <path d="M 22 36 Q 22 30 28 30 L 72 30 Q 78 30 78 36 L 78 44 L 22 44 Z" fill="#ffc4de" />
+
+  <!-- حلقه‌های سیمی تقویم -->
+  <rect x="32" y="20" width="6" height="16" rx="3" fill="#ffffff" />
+  <rect x="62" y="20" width="6" height="16" rx="3" fill="#ffffff" />
+  <circle cx="35" cy="24" r="1.5" fill="#71f6ff" />
+  <circle cx="65" cy="24" r="1.5" fill="#71f6ff" />
+  
+  <!-- تیک بزرگ و جذابِ آبی برای تسک انجام شده -->
+  <path d="M 34 56 L 46 66 L 68 42" fill="none" stroke="#71f6ff" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+  
+  <!-- خطوط نمایشی تسک‌های دیگه -->
+  <line x1="36" y1="70" x2="64" y2="70" stroke="#ffc4de" stroke-width="4" stroke-linecap="round"/>
+</svg>

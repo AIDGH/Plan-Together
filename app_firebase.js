@@ -128,6 +128,7 @@ onAuthStateChanged(auth, (user) => {
         unsubscribeFromDB = onSnapshot(collection(db, "tasks"), (snapshot) => {
             allTasks = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             allTasks.sort((a, b) => a.createdAt - b.createdAt);
+            setupMonthlyUser();
             renderAll();
         });
     } else {
@@ -314,25 +315,59 @@ function renderMonthlyBacklog() {
             .forEach(task => list.appendChild(createItem(task)));
 }
 
+const calendarContainer = document.getElementById('calendar-container');
+const calendarGrid = document.getElementById('calendar-grid'); 
 const mainGrid = document.querySelector('.main-grid'); 
-let currentZoom = 0.8; // همون دیفالتی که گفتی 😇
+let currentZoom = 0.8; 
 
-// اعمال زوم پیش‌فرض به محض لود شدن سایت
+calendarGrid.style.zoom = currentZoom;
 mainGrid.style.setProperty('--z', currentZoom);
 
-mainGrid.addEventListener('wheel', (e) => {
-    // گرفتن پینچ دو انگشتی روی ترک‌پد
+calendarContainer.addEventListener('wheel', (e) => {
     if (e.ctrlKey) {
         e.preventDefault(); 
         
-        const zoomSpeed = 0.006; // سرعت رو یه کم نرم‌تر کردم
+        const zoomSpeed = 0.008;
         currentZoom -= e.deltaY * zoomSpeed;
 
-        // محدودیت زوم: نه خیلی له بشه، نه خیلی غول‌پیکر
-        if (currentZoom < 0.5) currentZoom = 0.5;
+        if (currentZoom < 0.55) currentZoom = 0.55;
         if (currentZoom > 1.5) currentZoom = 1.5;
 
-        // فقط با آپدیت این متغیر، کل تقویم به صورت ایزومتریک جمع و باز میشه! 🤭
+        calendarGrid.style.zoom = currentZoom;
         mainGrid.style.setProperty('--z', currentZoom);
+
+        // 🚨 مچ‌گیری از مرورگر: گرفتن ارتفاع نهایی بعد از محاسبه فرمول calc
+        const computedMaxHeight = window.getComputedStyle(mainGrid).maxHeight;
+        console.log("📏 ارتفاع نهایی کادر (max-height) الان شد:", computedMaxHeight, " | با زوم:", currentZoom.toFixed(2));
     }
 }, { passive: false });
+
+async function setupMonthlyUser() {
+    try {
+        // گرفتن اطلاعات کاربری که همین الان لاگین کرده از سوپابیس
+        const { data: { user }, error } = await supabase.auth.getUser();
+
+        if (error) throw error;
+
+        // چک می‌کنیم یوزر وجود داشته باشه و ایمیلش دقیقاً همون باشه 😡
+        if (user && user.email === 'zabeti.dors@gmail.com') {
+            
+            // آیدی دکمه درسا تو بخش ماهانه رو اینجا بذار (همون دکمه خاکستری)
+            const dorsaBtn = document.getElementById('btn-dorsa'); 
+            
+            if (dorsaBtn) {
+                dorsaBtn.click(); // تقویم با احترام می‌ره رو حالت درسا 🤭
+                console.log("😇 خوش اومدی درسا! تقویم ماهانه برات تنظیم شد.");
+            }
+            activeMonthlyUser = 'dorsa'; 
+            mFilterDorsa.className = "m-filter-btn active dorsa"; 
+            mFilterArad.className = "m-filter-btn inactive"; 
+            document.getElementById('m-global-btn').style.backgroundColor = '#ffa1d2ff';
+            document.getElementById('m-global-btn').innerText = 'Add to Dorsa';
+            document.getElementById('m-selected-date-label').style.color = '#ffa1d2ff';
+            document.getElementById('calendar-grid').setAttribute('data-active', 'dorsa');
+        }
+    } catch (error) {
+        console.error("خطا در خواندن اطلاعات کاربر:", error);
+    }
+}
