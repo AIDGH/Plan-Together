@@ -1,8 +1,7 @@
 # Plan-Together
-A planner for Arad and Dorsa
 # A Shared Real-Time Planner
 
-A beautiful, synchronized daily, weekly, and monthly planner built specifically for two! This Single Page Application (SPA) allows real-time task management with a custom-built Shamsi (Persian) calendar integration.
+A beautiful, synchronized daily, weekly, and monthly planner built specifically for two (Arad and Dorsa)! This Single Page Application (SPA) allows real-time task management with a custom-built Shamsi (Persian) calendar integration.
 
 ## ✨ Features
 - **Real-Time Synchronization:** Powered by Firebase Firestore, every task added, checked, or deleted updates instantly on both screens without refreshing.
