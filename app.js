@@ -1,0 +1,239 @@
+// اضافه شدن کتابخونه‌های لاگین فایربیس
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyAt078tZnmbzkgHPWXd6oG7siMTuEFGSt8",
+  authDomain: "planner-eed1e.firebaseapp.com",
+  projectId: "planner-eed1e",
+  storageBucket: "planner-eed1e.firebasestorage.app",
+  messagingSenderId: "301576214173",
+  appId: "1:301576214173:web:9ae2de1a45ce69d5536674"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const auth = getAuth(app); // راه‌اندازی سیستم لاگین
+
+// === توابع تاریخ ===
+const today = new Date();
+const formatDate = (date) => {
+    const d = new Date(date);
+    let month = '' + (d.getMonth() + 1), day = '' + d.getDate(), year = d.getFullYear();
+    if (month.length < 2) month = '0' + month; if (day.length < 2) day = '0' + day;
+    return [year, month, day].join('-'); 
+};
+
+const toFaDigits = (num) => num.toString().replace(/\d/g, x => String.fromCharCode(x.charCodeAt(0) + 1728));
+const shamsiFormatter = new Intl.DateTimeFormat('en-US-u-ca-persian', { year: 'numeric', month: 'numeric', day: 'numeric' });
+const getShamsiParts = (date) => {
+    const p = shamsiFormatter.formatToParts(date);
+    let y, m, d;
+    p.forEach(part => {
+        if (part.type === 'year') y = parseInt(part.value);
+        if (part.type === 'month') m = parseInt(part.value);
+        if (part.type === 'day') d = parseInt(part.value);
+    });
+    return { y, m, d };
+};
+
+const faMonthNames = ["فروردین", "اردیبهشت", "خرداد", "تیر", "مرداد", "شهریور", "مهر", "آبان", "آذر", "دی", "بهمن", "اسفند"];
+const enMonthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const finglishMonthNames = ["Farvardin", "Ordibehesht", "Khordad", "Tir", "Mordad", "Shahrivar", "Mehr", "Aban", "Azar", "Dey", "Bahman", "Esfand"];
+
+const todayStr = formatDate(today);
+const currentShamsi = getShamsiParts(today);
+
+let startOfShamsiMonth = new Date(today);
+while (getShamsiParts(startOfShamsiMonth).m === currentShamsi.m) { startOfShamsiMonth.setDate(startOfShamsiMonth.getDate() - 1); }
+startOfShamsiMonth.setDate(startOfShamsiMonth.getDate() + 1); 
+
+const shamsiDaysArr = [];
+let currentDay = new Date(startOfShamsiMonth);
+while (getShamsiParts(currentDay).m === currentShamsi.m) { shamsiDaysArr.push(new Date(currentDay)); currentDay.setDate(currentDay.getDate() + 1); }
+
+const getStartOfWeek = (d) => {
+    const date = new Date(d); const day = date.getDay() || 7; 
+    if(day !== 1) date.setHours(-24 * (day - 1)); return date;
+};
+const startOfWeek = getStartOfWeek(today);
+const currentWeekStr = formatDate(startOfWeek); 
+const weekDaysArr = Array.from({length: 7}).map((_, i) => { const d = new Date(startOfWeek); d.setDate(d.getDate() + i); return d; });
+
+let allTasks = [];
+let activeMonthlyUser = 'arad'; 
+let unsubscribeFromDB = null; // متغیری برای قطع کردن اتصال دیتابیس وقتی خارج میشید
+
+// === سیستم ورود و خروج ===
+const loginScreen = document.getElementById('login-screen');
+const appNav = document.getElementById('app-nav');
+const appMain = document.getElementById('app-main');
+const errorMsg = document.getElementById('login-error');
+
+document.getElementById('login-btn').addEventListener('click', async () => {
+    const email = document.getElementById('login-email').value;
+    const pass = document.getElementById('login-pass').value;
+    try {
+        errorMsg.style.display = 'none';
+        await signInWithEmailAndPassword(auth, email, pass);
+    } catch (error) {
+        errorMsg.style.display = 'block'; // ارور در صورت اشتباه بودن رمز
+    }
+});
+
+document.getElementById('logout-btn').addEventListener('click', () => {
+    signOut(auth);
+});
+
+// گوش دادن به وضعیت لاگین
+onAuthStateChanged(auth, (user) => {
+    if (user) {
+        // لاگین شد! مخفی کردن صفحه ورود و نمایش پلنر
+        loginScreen.classList.add('hidden-app');
+        appNav.classList.remove('hidden-app');
+        appMain.classList.remove('hidden-app');
+
+        // وصل شدن به دیتابیس فقط در صورت لاگین بودن
+        unsubscribeFromDB = onSnapshot(collection(db, "tasks"), (snapshot) => {
+            allTasks = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            allTasks.sort((a, b) => a.createdAt - b.createdAt);
+            renderAll();
+        });
+    } else {
+        // خارج شد! نمایش مجدد صفحه ورود
+        loginScreen.classList.remove('hidden-app');
+        appNav.classList.add('hidden-app');
+        appMain.classList.add('hidden-app');
+        
+        // قطع اتصال از دیتابیس برای امنیت
+        if (unsubscribeFromDB) unsubscribeFromDB();
+    }
+});
+
+// نویگیشن تب‌ها
+document.querySelectorAll('.nav-btn:not(#logout-btn)').forEach(btn => {
+    btn.addEventListener('click', () => {
+        document.querySelectorAll('.nav-btn:not(#logout-btn), .view-section').forEach(el => {
+            el.classList.remove('active');
+            if(el.classList.contains('view-section')) el.classList.add('hidden');
+        });
+        btn.classList.add('active');
+        document.getElementById(btn.getAttribute('data-target')).classList.remove('hidden'); 
+        document.getElementById(btn.getAttribute('data-target')).classList.add('active');
+    });
+});
+
+async function saveTask(text, owner, type, dateString = null) {
+    if (!text.trim()) return;
+    await addDoc(collection(db, "tasks"), { text, owner, type, date: dateString, weekId: currentWeekStr, monthId: `${currentShamsi.y}-${currentShamsi.m}`, completed: false, createdAt: Date.now() });
+}
+
+function createItem(task) {
+    const div = document.createElement('div');
+    div.className = `task-item owner-${task.owner} ${task.completed ? 'completed' : ''}`;
+    const delBtn = document.createElement('button'); delBtn.className = 'delete-btn'; delBtn.innerText = '-';
+    const rightContent = document.createElement('div'); rightContent.className = 'task-content';
+    rightContent.innerHTML = `<input type="checkbox" ${task.completed ? 'checked' : ''}> <label>${task.text}</label>`;
+    
+    div.appendChild(delBtn); div.appendChild(rightContent);
+
+    rightContent.querySelector('input').addEventListener('change', async (e) => { await updateDoc(doc(db, "tasks", task.id), { completed: e.target.checked }); });
+    delBtn.addEventListener('click', async () => { await deleteDoc(doc(db, "tasks", task.id)); });
+    return div;
+}
+
+document.getElementById('arad-daily-btn').addEventListener('click', () => { saveTask(document.getElementById('arad-daily-input').value, 'arad', 'date', todayStr); document.getElementById('arad-daily-input').value = ''; });
+document.getElementById('dorsa-daily-btn').addEventListener('click', () => { saveTask(document.getElementById('dorsa-daily-input').value, 'dorsa', 'date', todayStr); document.getElementById('dorsa-daily-input').value = ''; });
+document.getElementById('w-f-arad').addEventListener('click', () => { saveTask(document.getElementById('weekly-float-input').value, 'arad', 'floating'); document.getElementById('weekly-float-input').value = ''; });
+document.getElementById('w-f-dorsa').addEventListener('click', () => { saveTask(document.getElementById('weekly-float-input').value, 'dorsa', 'floating'); document.getElementById('weekly-float-input').value = ''; });
+document.getElementById('m-b-arad').addEventListener('click', () => { saveTask(document.getElementById('monthly-backlog-input').value, 'arad', 'backlog'); document.getElementById('monthly-backlog-input').value = ''; });
+document.getElementById('m-b-dorsa').addEventListener('click', () => { saveTask(document.getElementById('monthly-backlog-input').value, 'dorsa', 'backlog'); document.getElementById('monthly-backlog-input').value = ''; });
+
+const mFilterArad = document.getElementById('filter-arad');
+const mFilterDorsa = document.getElementById('filter-dorsa');
+mFilterArad.addEventListener('click', () => { activeMonthlyUser = 'arad'; mFilterArad.className = "m-filter-btn active arad"; mFilterDorsa.className = "m-filter-btn inactive"; renderMonthlyGrid(); });
+mFilterDorsa.addEventListener('click', () => { activeMonthlyUser = 'dorsa'; mFilterDorsa.className = "m-filter-btn active dorsa"; mFilterArad.className = "m-filter-btn inactive"; renderMonthlyGrid(); });
+
+function renderAll() { renderDaily(); renderWeekly(); renderMonthlyGrid(); renderMonthlyBacklog(); }
+
+function renderDaily() {
+    document.getElementById('daily-arad-title').innerText = `Arad's Day`;
+    document.getElementById('daily-dorsa-title').innerText = `Dorsa's Day`;
+    const aradList = document.getElementById('arad-daily-tasks'); const dorsaList = document.getElementById('dorsa-daily-tasks');
+    aradList.innerHTML = ''; dorsaList.innerHTML = '';
+    allTasks.filter(t => t.type === 'date' && t.date === todayStr).forEach(task => {
+        if(task.owner === 'arad') aradList.appendChild(createItem(task));
+        if(task.owner === 'dorsa') dorsaList.appendChild(createItem(task));
+    });
+}
+
+function renderWeekly() {
+    const grid = document.getElementById('weekly-grid'); const floatList = document.getElementById('weekly-floating-tasks');
+    grid.innerHTML = ''; floatList.innerHTML = '';
+    allTasks.filter(t => t.type === 'floating' && t.weekId === currentWeekStr).forEach(task => floatList.appendChild(createItem(task)));
+
+    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    weekDaysArr.forEach(d => {
+        const dStr = formatDate(d); const isToday = dStr === todayStr; const p = getShamsiParts(d);
+        const dayDiv = document.createElement('div'); dayDiv.className = `day-card ${isToday ? 'today-highlight' : ''}`;
+        
+        dayDiv.innerHTML = `
+            <div class="day-card-header">
+                <h4 style="margin:0;">${dayNames[d.getDay()]} (${p.d} ${finglishMonthNames[p.m - 1]}) ${isToday ? '🎯' : ''}</h4>
+                <div class="small-input-group" style="margin:0; width: 60%;">
+                    <input type="text" id="w-input-${dStr}" placeholder="Task..." dir="auto">
+                    <button id="w-a-${dStr}" class="btn-a">A</button> <button id="w-d-${dStr}" class="btn-d">D</button>
+                </div>
+            </div>
+            <div id="w-tasks-${dStr}" class="task-list"></div>
+        `;
+        grid.appendChild(dayDiv);
+        dayDiv.querySelector(`#w-a-${dStr}`).addEventListener('click', () => saveTask(dayDiv.querySelector(`#w-input-${dStr}`).value, 'arad', 'date', dStr));
+        dayDiv.querySelector(`#w-d-${dStr}`).addEventListener('click', () => saveTask(dayDiv.querySelector(`#w-input-${dStr}`).value, 'dorsa', 'date', dStr));
+        allTasks.filter(t => t.type === 'date' && t.date === dStr).forEach(task => dayDiv.querySelector(`#w-tasks-${dStr}`).appendChild(createItem(task)));
+    });
+}
+
+function renderMonthlyGrid() {
+    const grid = document.getElementById('calendar-grid'); grid.innerHTML = '';
+    const startM = shamsiDaysArr[0].getMonth(); const endM = shamsiDaysArr[shamsiDaysArr.length - 1].getMonth();
+    const gMonthsStr = startM === endM ? enMonthNames[startM] : `${enMonthNames[startM]}-${enMonthNames[endM]}`;
+    const startY = shamsiDaysArr[0].getFullYear(); const endY = shamsiDaysArr[shamsiDaysArr.length - 1].getFullYear();
+    const gYearsStr = startY === endY ? startY : `${startY}-${endY}`;
+    
+    document.getElementById('monthly-title-text').innerText = `${currentShamsi.y} - ${gYearsStr}`;
+    document.getElementById('monthly-subtitle-text').innerText = `${faMonthNames[currentShamsi.m - 1]} | ${gMonthsStr}`;
+
+    const dayNames = ['Sat', 'Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
+    dayNames.forEach(day => { const head = document.createElement('div'); head.className = 'weekday-header'; head.innerText = day; grid.appendChild(head); });
+
+    const firstDayOfWeek = shamsiDaysArr[0].getDay(); const emptyDays = (firstDayOfWeek + 1) % 7;
+    for (let i = 0; i < emptyDays; i++) { const empty = document.createElement('div'); empty.className = 'day-card empty-day'; grid.appendChild(empty); }
+
+    shamsiDaysArr.forEach(d => {
+        const dStr = formatDate(d); const isToday = dStr === todayStr;
+        const shamsiNum = toFaDigits(getShamsiParts(d).d); const gregNum = d.getDate();
+        const dayDiv = document.createElement('div'); dayDiv.className = `day-card ${isToday ? 'today-highlight' : ''}`;
+        
+        dayDiv.innerHTML = `
+            <div style="display: flex; justify-content: space-between; font-size: 1.15rem; font-weight: bold; margin-bottom: 12px; color: #475569;">
+                <span>${gregNum}</span> <span style="font-family: 'Vazirmatn', sans-serif;">${shamsiNum}</span>
+            </div>
+            <div class="small-input-group">
+                <input type="text" id="m-input-${dStr}" placeholder="Add for ${activeMonthlyUser}..." dir="auto">
+                <button id="m-add-${dStr}" style="background-color: ${activeMonthlyUser === 'arad' ? '#38bdf8' : '#f472b6'};">Add</button>
+            </div>
+            <div id="m-tasks-${dStr}" class="task-list"></div>
+        `;
+        grid.appendChild(dayDiv);
+        dayDiv.querySelector(`#m-add-${dStr}`).addEventListener('click', () => saveTask(dayDiv.querySelector(`#m-input-${dStr}`).value, activeMonthlyUser, 'date', dStr));
+        allTasks.filter(t => t.type === 'date' && t.date === dStr && t.owner === activeMonthlyUser).forEach(task => dayDiv.querySelector(`#m-tasks-${dStr}`).appendChild(createItem(task)));
+    });
+}
+
+function renderMonthlyBacklog() {
+    const list = document.getElementById('monthly-backlog-tasks'); list.innerHTML = '';
+    allTasks.filter(t => (t.type === 'backlog' || t.type === 'floating') && t.monthId === `${currentShamsi.y}-${currentShamsi.m}`)
+            .forEach(task => list.appendChild(createItem(task)));
+}

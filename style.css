@@ -1,0 +1,141 @@
+:root {
+    --bg-main: #f8fafc; --text-main: #334155;
+    --arad-bg: #e0f2fe; --arad-border: #bae6fd;
+    --dorsa-bg: #fce7f3; --dorsa-border: #fbcfe8;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background-color: var(--bg-main); color: var(--text-main); margin: 0; padding: 0; overflow-x: hidden;
+}
+
+.navbar {
+    background: white; padding: 15px 30px; display: flex; justify-content: space-between; align-items: center;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05); margin-bottom: 20px; position: sticky; top: 0; z-index: 100;
+}
+.nav-brand { font-weight: bold; font-size: 1.2rem; }
+.nav-links { display: flex; gap: 10px; }
+.nav-btn { padding: 8px 16px; border: none; background: transparent; cursor: pointer; font-size: 1rem; border-radius: 6px; transition: 0.2s; }
+.nav-btn.active, .nav-btn:hover { background: #e2e8f0; }
+
+.container { max-width: 1400px; margin: 0 auto; padding: 0 20px; }
+.view-section { display: none; animation: fadeIn 0.3s; }
+.view-section.active { display: block; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
+.split-layout { display: flex; gap: 24px; flex-wrap: wrap; }
+.column { flex: 1; min-width: 300px; border-radius: 12px; padding: 24px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); background-color: #ffffff; border: 1px solid #e2e8f0; }
+
+.layout-with-sidebar { display: flex; gap: 24px; align-items: flex-start; flex-wrap: nowrap; }
+.sidebar {
+    flex: 0 0 260px; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+    position: sticky; top: 180px; max-height: calc(100vh - 200px); overflow-y: auto;
+}
+.subtitle { font-size: 0.85rem; color: #64748b; margin-bottom: 15px; }
+
+/* سایز روزهای ماهانه بزرگتر شد (260px) تا دکمه‌ها بیرون نزنن */
+.main-grid { 
+    flex: 1; 
+    display: grid; 
+    gap: 16px; 
+    overflow: auto; /* حالا هم اسکرول افقی داره هم عمودی */
+    max-height: calc(100vh - 180px); /* ارتفاعش محدود شد تا خودش اسکرول بخوره */
+    padding-bottom: 20px; 
+}
+.weekly-grid { grid-template-columns: 1fr; }
+.monthly-grid { grid-template-columns: repeat(7, minmax(260px, 1fr)); }
+
+.weekday-header { 
+    text-align: center; 
+    font-weight: bold; 
+    padding: 10px 0; 
+    color: #64748b; 
+    background: white; 
+    border-radius: 8px; 
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    position: sticky; 
+    top: 0; /* حالا به سقف کادر تقویم می‌چسبه! */
+    z-index: 80; 
+}
+.empty-day { background: transparent; border: none; box-shadow: none; }
+
+.day-card { background: white; padding: 15px; border-radius: 8px; min-height: 120px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); border: 1px solid #e2e8f0; }
+.day-card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+.today-highlight { border: 2px solid #6366f1 !important; background-color: #eef2ff !important; }
+
+.monthly-filter { display: flex; justify-content: center; gap: 16px; margin-bottom: 24px; position: sticky; top: 70px; z-index: 90; background: var(--bg-main); padding: 10px 0; }
+.m-filter-btn { padding: 10px 40px; border-radius: 30px; border: none; font-size: 1.1rem; font-weight: bold; cursor: pointer; transition: 0.3s; }
+.m-filter-btn.active.arad { background-color: #71f6ff; color: white; box-shadow: 0 4px 10px rgba(56, 189, 248, 0.4); }
+.m-filter-btn.active.dorsa { background-color: #ffc4de; color: white; box-shadow: 0 4px 10px rgba(210, 142, 177, 0.4); }
+.m-filter-btn.inactive { background-color: #cbd5e1; color: white; }
+
+.input-group, .small-input-group { display: flex; gap: 8px; margin-bottom: 20px; }
+.small-input-group { margin-bottom: 12px; gap: 4px; }
+.input-group input, .small-input-group input { flex: 1; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; outline: none; font-family: 'Vazirmatn', sans-serif; }
+.small-input-group input { padding: 6px; font-size: 0.8rem; border-radius: 4px; }
+.input-group button { padding: 10px 15px; background-color: #475569; color: white; border: none; border-radius: 6px; cursor: pointer; }
+.small-input-group button { padding: 6px 10px; border: none; border-radius: 4px; cursor: pointer; color: white; font-weight: bold; font-size: 0.8rem; }
+.btn-a { background-color: #5aeef8; } .btn-d { background-color: #ff97c4; }
+
+/* =========================================
+   مدیریت تسک‌ها: دکمه حذف چپ، متن و تیک راست
+   ========================================= */
+.task-item {
+    display: flex; align-items: center; justify-content: flex-start;
+    background: #f1f5f9; padding: 10px 12px; border-radius: 8px; margin-bottom: 8px;
+    direction: ltr; /* باعث میشه دکمه دیلیت که اول ساخته میشه بیفته سمت چپ */
+}
+
+/* دکمه دایره‌ای حذف در سمت چپ */
+.delete-btn {
+    background-color: #cbd5e1; color: #475569; border: none; width: 24px; height: 24px;
+    border-radius: 50%; display: flex; justify-content: center; align-items: center; cursor: pointer;
+    flex-shrink: 0; margin-right: 12px; transition: 0.2s; font-size: 20px; font-weight: 300; padding: 0; padding-bottom: 2px;
+}
+.delete-btn:hover { background-color: #ef4444; color: white; }
+
+/* متن فارسی در سمت راست */
+.task-content {
+    display: flex; align-items: flex-start; gap: 8px;
+    text-align: right; flex: 1; direction: rtl; /* متن و چک باکس راست‌چین میشن */
+}
+.task-content input[type="checkbox"] { margin-top: 4px; width: 16px; height: 16px; cursor: pointer; flex-shrink: 0; }
+.task-content label { cursor: pointer; font-family: 'Vazirmatn', sans-serif; word-break: break-word; line-height: 1.4; }
+.task-item.completed label { text-decoration: line-through; color: #94a3b8; }
+
+.owner-arad { background-color: var(--arad-bg); border-right: 4px solid #71f6ff; }
+.owner-dorsa { background-color: var(--dorsa-bg); border-right: 4px solid #ffc4de; }
+
+/* هاور ماهانه */
+.monthly-grid .task-list { max-height: 110px; overflow: hidden; transition: max-height 0.3s ease; }
+.monthly-grid .day-card { transition: all 0.3s; z-index: 1; position: relative; }
+.monthly-grid .day-card:hover { transform: translateY(-2px); box-shadow: 0 10px 20px rgba(0,0,0,0.1); z-index: 10; }
+.monthly-grid .day-card:hover .task-list { max-height: 250px; overflow-y: auto; }
+
+/* =========================================
+   Login Screen Styles
+   ========================================= */
+.login-overlay {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: var(--bg-main); z-index: 9999;
+    display: flex; justify-content: center; align-items: center;
+}
+.login-box {
+    background: white; padding: 40px; border-radius: 15px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.1); text-align: center; width: 320px;
+}
+.login-box h2 { margin-top: 0; margin-bottom: 25px; color: #1e293b; font-family: 'Vazirmatn', sans-serif; }
+.login-box input {
+    width: 100%; padding: 12px; margin-bottom: 15px; border: 1px solid #cbd5e1;
+    border-radius: 6px; box-sizing: border-box; outline: none; font-size: 1rem;
+}
+.login-box button {
+    width: 100%; padding: 12px; background-color: #38bdf8; color: white;
+    border: none; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 1.1rem; transition: 0.2s;
+}
+.login-box button:hover { background-color: #0284c7; }
+.hidden-app { display: none !important; }
+
+/* ffc4de Dor
+
+71f6ff Ar */
