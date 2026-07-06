@@ -160,15 +160,19 @@ body {
     cursor: pointer;
     padding: 0 !important;
     width: auto !important;
-    color: #3e4958;
+    /* رنگش رو تیره‌تر کردم تا روی هر پس‌زمینه‌ای قشنگ معلوم باشه */
+    color: #596c85 !important; 
+    stroke: #596c85 !important;
     display: flex;
     justify-content: center;
     align-items: center;
+    z-index: 10; /* این خط باعث میشه همیشه بیاد روی همه چی */
 }
 
+/* وقتی هاور می‌کنی آبیِ خوش‌رنگ بشه */
 .eye-btn:hover {
-    background: transparent !important;
-    color: #38bdf8 !important; /* موقع هاور کردن، رنگش آبی میشه */
+    color: #38bdf8 !important;
+    stroke: #38bdf8 !important;
 }
 
 /* ffc4de Dor

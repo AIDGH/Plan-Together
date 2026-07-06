@@ -103,13 +103,15 @@ document.getElementById('login-btn').addEventListener('click', async () => {
 });
 
 document.getElementById('logout-btn').addEventListener('click', async () => {
-    const email = document.getElementById('login-email').value.trim();
-    const pass = document.getElementById('login-pass').value;
     try {
-        errorMsg.style.display = 'none';
-        await signInWithEmailAndPassword(auth, email, pass);
+        // ۱. پاک کردن توکن و نشست از فایربیس
+        await signOut(auth);
+        
+        // ۲. رفرش کردن اجباری کل صفحه برای پاک شدن کش و برگشتن قطعی به صفحه ورود
+        window.location.reload(); 
     } catch (error) {
-        errorMsg.style.display = 'block'; 
+        console.error("ارور موقع خروج: ", error);
+        alert("یه مشکلی تو خروج پیش اومد! 😟");
     }
 });
 
