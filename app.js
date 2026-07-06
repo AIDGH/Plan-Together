@@ -7,6 +7,9 @@ const supabaseKey = 'sb_publishable_aBoRxCDcW50xChZEUPeHTw_fq8Rp-MA';
 // 👆👆 👆👆
 const supabase = createClient(supabaseUrl, supabaseKey);
 
+const loggedInUser = localStorage.getItem('loggedInUser') || 'Arad';
+let currentOwner = loggedInUser;
+
 // === توابع تاریخ (دقیقاً مثل قبل) ===
 const today = new Date();
 const formatDate = (date) => {
@@ -54,6 +57,7 @@ const weekDaysArr = Array.from({length: 7}).map((_, i) => { const d = new Date(s
 
 let allTasks = [];
 let activeMonthlyUser = 'arad'; 
+let selectedMonthlyDate = todayStr; // پیش‌فرض روی امروزه
 let realtimeChannel = null;
 
 // === کدهای نمایش/مخفی کردن پسورد ===
@@ -107,6 +111,7 @@ async function fetchInitialTasksAndSubscribe() {
     const { data, error } = await supabase.from('tasks').select('*').order('createdAt', { ascending: true });
     if (!error) {
         allTasks = data;
+        setupMonthlyUser();
         renderAll();
     }
 
@@ -122,6 +127,7 @@ async function fetchInitialTasksAndSubscribe() {
                     allTasks = allTasks.filter(t => t.id !== payload.old.id);
                 }
                 allTasks.sort((a, b) => a.createdAt - b.createdAt);
+                setupMonthlyUser()
                 renderAll();
             })
             .subscribe();
@@ -144,11 +150,18 @@ document.querySelectorAll('.nav-btn:not(#logout-btn)').forEach(btn => {
 // === عملیات‌های دیتابیس (CRUD) ===
 async function saveTask(text, owner, type, dateString = null) {
     if (!text.trim()) return;
-    await supabase.from('tasks').insert([{ 
+    
+    const { data, error } = await supabase.from('tasks').insert([{ 
         text, owner, type, date: dateString, 
         weekId: currentWeekStr, monthId: `${currentShamsi.y}-${currentShamsi.m}`, 
         completed: false, createdAt: Date.now() 
     }]);
+
+    // اگه اروری بود اینجا مچشو می‌گیریم! 😡
+    if (error) {
+        console.error("🚨 ارور ذخیره در سوپابیس:", error);
+        alert("یه اروری داد! برو تو کنسول (Inspect) ببین چیه.");
+    }
 }
 
 function createItem(task) {
@@ -179,9 +192,33 @@ document.getElementById('m-b-dorsa').addEventListener('click', () => { saveTask(
 
 const mFilterArad = document.getElementById('filter-arad');
 const mFilterDorsa = document.getElementById('filter-dorsa');
-mFilterArad.addEventListener('click', () => { activeMonthlyUser = 'arad'; mFilterArad.className = "m-filter-btn active arad"; mFilterDorsa.className = "m-filter-btn inactive"; renderMonthlyGrid(); });
-mFilterDorsa.addEventListener('click', () => { activeMonthlyUser = 'dorsa'; mFilterDorsa.className = "m-filter-btn active dorsa"; mFilterArad.className = "m-filter-btn inactive"; renderMonthlyGrid(); });
+// تغییر فیلتر و تغییر رنگ دکمه سایدبار متناسب با آراد یا درسا
+mFilterArad.addEventListener('click', () => { 
+    activeMonthlyUser = 'arad'; 
+    mFilterArad.className = "m-filter-btn active arad"; 
+    mFilterDorsa.className = "m-filter-btn inactive"; 
+    document.getElementById('m-global-btn').style.backgroundColor = '#42c6faff';
+    document.getElementById('m-global-btn').innerText = 'Add to Arad';
+    document.getElementById('m-selected-date-label').style.color = '#42c6faff';
+    document.getElementById('calendar-grid').setAttribute('data-active', 'arad');
+    renderMonthlyGrid(); 
+});
+mFilterDorsa.addEventListener('click', () => { 
+    activeMonthlyUser = 'dorsa'; 
+    mFilterDorsa.className = "m-filter-btn active dorsa"; 
+    mFilterArad.className = "m-filter-btn inactive"; 
+    document.getElementById('m-global-btn').style.backgroundColor = '#ffa1d2ff';
+    document.getElementById('m-global-btn').innerText = 'Add to Dorsa';
+    document.getElementById('m-selected-date-label').style.color = '#ffa1d2ff';
+    document.getElementById('calendar-grid').setAttribute('data-active', 'dorsa');
+    renderMonthlyGrid(); 
+});
 
+// عملکرد دکمه جدید تو سایدبار
+document.getElementById('m-global-btn').addEventListener('click', () => {
+    saveTask(document.getElementById('m-global-input').value, activeMonthlyUser, 'date', selectedMonthlyDate);
+    document.getElementById('m-global-input').value = '';
+});
 function renderAll() { renderDaily(); renderWeekly(); renderMonthlyGrid(); renderMonthlyBacklog(); }
 
 function renderDaily() {
@@ -241,20 +278,41 @@ function renderMonthlyGrid() {
     shamsiDaysArr.forEach(d => {
         const dStr = formatDate(d); const isToday = dStr === todayStr;
         const shamsiNum = toFaDigits(getShamsiParts(d).d); const gregNum = d.getDate();
-        const dayDiv = document.createElement('div'); dayDiv.className = `day-card ${isToday ? 'today-highlight' : ''}`;
+        const shamsiMonthName = faMonthNames[getShamsiParts(d).m - 1];
         
+        const dayDiv = document.createElement('div'); 
+        dayDiv.className = `day-card ${isToday ? 'today-highlight' : ''}`;
+        
+        // دیگه اینپوتی داخل کارت‌ها نیست! 😇
         dayDiv.innerHTML = `
             <div style="display: flex; justify-content: space-between; font-size: 1.15rem; font-weight: bold; margin-bottom: 12px; color: #475569;">
                 <span>${gregNum}</span> <span style="font-family: 'Vazirmatn', sans-serif;">${shamsiNum}</span>
             </div>
-            <div class="small-input-group">
-                <input type="text" id="m-input-${dStr}" placeholder="Add for ${activeMonthlyUser}..." dir="auto">
-                <button id="m-add-${dStr}" style="background-color: ${activeMonthlyUser === 'arad' ? '#38bdf8' : '#f472b6'};">Add</button>
-            </div>
             <div id="m-tasks-${dStr}" class="task-list"></div>
         `;
         grid.appendChild(dayDiv);
-        dayDiv.querySelector(`#m-add-${dStr}`).addEventListener('click', () => saveTask(dayDiv.querySelector(`#m-input-${dStr}`).value, activeMonthlyUser, 'date', dStr));
+        
+        // اگر این روز همون روزیه که انتخاب شده، استایلش رو اعمال کن و نوشته سایدبار رو آپدیت کن
+        if (dStr === selectedMonthlyDate) {
+            dayDiv.classList.add('selected-day-highlight');
+            document.getElementById('m-selected-date-label').innerText = `${gregNum} ${enMonthNames[d.getMonth()]} | ${shamsiNum} ${shamsiMonthName}`;
+        }
+
+        // منطق کلیک کردن روی روز
+        dayDiv.addEventListener('click', (e) => {
+            // اگه روی خود تسک یا دکمه حذفش کلیک کرد، روز رو انتخاب نکن
+            if (e.target.closest('.task-item')) return;
+            
+            // پاک کردن هاله از روی بقیه روزها
+            document.querySelectorAll('.monthly-grid .day-card').forEach(c => c.classList.remove('selected-day-highlight'));
+            // اضافه کردن هاله به روزی که الان کلیک شد
+            dayDiv.classList.add('selected-day-highlight');
+            selectedMonthlyDate = dStr;
+            
+            // آپدیت متن سایدبار
+            document.getElementById('m-selected-date-label').innerText = `${gregNum} ${enMonthNames[d.getMonth()]} | ${shamsiNum} ${shamsiMonthName}`;
+        });
+
         allTasks.filter(t => t.type === 'date' && t.date === dStr && t.owner === activeMonthlyUser).forEach(task => dayDiv.querySelector(`#m-tasks-${dStr}`).appendChild(createItem(task)));
     });
 }
@@ -263,4 +321,61 @@ function renderMonthlyBacklog() {
     const list = document.getElementById('monthly-backlog-tasks'); list.innerHTML = '';
     allTasks.filter(t => (t.type === 'backlog' || t.type === 'floating') && t.monthId === `${currentShamsi.y}-${currentShamsi.m}`)
             .forEach(task => list.appendChild(createItem(task)));
+}
+
+const calendarContainer = document.getElementById('calendar-container');
+const calendarGrid = document.getElementById('calendar-grid'); 
+const mainGrid = document.querySelector('.main-grid'); 
+let currentZoom = 0.8; 
+
+calendarGrid.style.zoom = currentZoom;
+mainGrid.style.setProperty('--z', currentZoom);
+
+calendarContainer.addEventListener('wheel', (e) => {
+    if (e.ctrlKey) {
+        e.preventDefault(); 
+        
+        const zoomSpeed = 0.008;
+        currentZoom -= e.deltaY * zoomSpeed;
+
+        if (currentZoom < 0.55) currentZoom = 0.55;
+        if (currentZoom > 1.5) currentZoom = 1.5;
+
+        calendarGrid.style.zoom = currentZoom;
+        mainGrid.style.setProperty('--z', currentZoom);
+
+        // 🚨 مچ‌گیری از مرورگر: گرفتن ارتفاع نهایی بعد از محاسبه فرمول calc
+        const computedMaxHeight = window.getComputedStyle(mainGrid).maxHeight;
+        console.log("📏 ارتفاع نهایی کادر (max-height) الان شد:", computedMaxHeight, " | با زوم:", currentZoom.toFixed(2));
+    }
+}, { passive: false });
+
+async function setupMonthlyUser() {
+    try {
+        // گرفتن اطلاعات کاربری که همین الان لاگین کرده از سوپابیس
+        const { data: { user }, error } = await supabase.auth.getUser();
+
+        if (error) throw error;
+
+        // چک می‌کنیم یوزر وجود داشته باشه و ایمیلش دقیقاً همون باشه 😡
+        if (user && user.email === 'zabeti.dors@gmail.com') {
+            
+            // آیدی دکمه درسا تو بخش ماهانه رو اینجا بذار (همون دکمه خاکستری)
+            const dorsaBtn = document.getElementById('btn-dorsa'); 
+            
+            if (dorsaBtn) {
+                dorsaBtn.click(); // تقویم با احترام می‌ره رو حالت درسا 🤭
+                console.log("😇 خوش اومدی درسا! تقویم ماهانه برات تنظیم شد.");
+            }
+            activeMonthlyUser = 'dorsa'; 
+            mFilterDorsa.className = "m-filter-btn active dorsa"; 
+            mFilterArad.className = "m-filter-btn inactive"; 
+            document.getElementById('m-global-btn').style.backgroundColor = '#ffa1d2ff';
+            document.getElementById('m-global-btn').innerText = 'Add to Dorsa';
+            document.getElementById('m-selected-date-label').style.color = '#ffa1d2ff';
+            document.getElementById('calendar-grid').setAttribute('data-active', 'dorsa');
+        }
+    } catch (error) {
+        console.error("خطا در خواندن اطلاعات کاربر:", error);
+    }
 }

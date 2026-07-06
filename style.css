@@ -39,8 +39,10 @@ body {
     display: grid; 
     gap: 16px; 
     overflow: auto; /* حالا هم اسکرول افقی داره هم عمودی */
-    max-height: calc(100vh - 180px); /* ارتفاعش محدود شد تا خودش اسکرول بخوره */
-    padding-bottom: 20px; 
+    height: calc(200vh - var(--z) * var(--z) * 1100px); /* این خط باعث میشه ارتفاعش با اسکرول سایدبار هماهنگ باشه */
+    padding-bottom: 20px;
+    /* background-color: rgb(197, 197, 197); */
+    --z: 0.8; 
 }
 .weekly-grid { grid-template-columns: 1fr; }
 .monthly-grid { grid-template-columns: repeat(7, minmax(260px, 1fr)); }
@@ -171,8 +173,8 @@ body {
 
 /* وقتی هاور می‌کنی آبیِ خوش‌رنگ بشه */
 .eye-btn:hover {
-    color: #38bdf8 !important;
-    stroke: #38bdf8 !important;
+    color: #38d5f8 !important;
+    stroke: #38d5f8 !important;
 }
 /* =========================================
    📱 Responsive & Mobile Styles (جادوی گوشی)
@@ -212,6 +214,31 @@ body {
     }
 }
 
-/* ffc4de Dor
+/* =========================================
+   Selected Day Styles 
+   ========================================= */
+.monthly-grid .day-card {
+    cursor: pointer; /* موس روش به شکل دست درمیاد */
+}
 
-71f6ff Ar */
+/* افکت روز انتخاب شده */
+.selected-day-highlight {
+    border: 2px dashed #38bdf8 !important;
+    background-color: #f0f9ff !important;
+    transform: scale(1.02); /* یه ذره میاد جلو */
+    box-shadow: 0 4px 12px rgba(56, 189, 248, 0.2);
+}
+
+/* تغییر رنگ هاله وقتی درسا انتخاب میشه */
+.monthly-grid[data-active="dorsa"] .selected-day-highlight {
+    border-color: #f9b9da !important;
+    background-color: #fcf2f8 !important;
+    box-shadow: 0 4px 12px rgba(244, 114, 182, 0.2);
+}
+
+/* باکس اصلی تقویم که قراره زوم بشه */
+/* کانتینر تقویم فقط برای مدیریت اسکرول استفاده میشه */
+#calendar-container {
+    width: 100%;
+    overflow-x: auto; 
+}

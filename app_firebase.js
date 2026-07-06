@@ -83,6 +83,7 @@ const weekDaysArr = Array.from({length: 7}).map((_, i) => { const d = new Date(s
 
 let allTasks = [];
 let activeMonthlyUser = 'arad'; 
+let selectedMonthlyDate = todayStr; // پیش‌فرض روی امروزه
 let unsubscribeFromDB = null; // متغیری برای قطع کردن اتصال دیتابیس وقتی خارج میشید
 
 // === سیستم ورود و خروج ===
@@ -181,8 +182,33 @@ document.getElementById('m-b-dorsa').addEventListener('click', () => { saveTask(
 
 const mFilterArad = document.getElementById('filter-arad');
 const mFilterDorsa = document.getElementById('filter-dorsa');
-mFilterArad.addEventListener('click', () => { activeMonthlyUser = 'arad'; mFilterArad.className = "m-filter-btn active arad"; mFilterDorsa.className = "m-filter-btn inactive"; renderMonthlyGrid(); });
-mFilterDorsa.addEventListener('click', () => { activeMonthlyUser = 'dorsa'; mFilterDorsa.className = "m-filter-btn active dorsa"; mFilterArad.className = "m-filter-btn inactive"; renderMonthlyGrid(); });
+// تغییر فیلتر و تغییر رنگ دکمه سایدبار متناسب با آراد یا درسا
+mFilterArad.addEventListener('click', () => { 
+    activeMonthlyUser = 'arad'; 
+    mFilterArad.className = "m-filter-btn active arad"; 
+    mFilterDorsa.className = "m-filter-btn inactive"; 
+    document.getElementById('m-global-btn').style.backgroundColor = '#38bdf8';
+    document.getElementById('m-global-btn').innerText = 'Add to Arad';
+    document.getElementById('m-selected-date-label').style.color = '#38bdf8';
+    document.getElementById('calendar-grid').setAttribute('data-active', 'arad');
+    renderMonthlyGrid(); 
+});
+mFilterDorsa.addEventListener('click', () => { 
+    activeMonthlyUser = 'dorsa'; 
+    mFilterDorsa.className = "m-filter-btn active dorsa"; 
+    mFilterArad.className = "m-filter-btn inactive"; 
+    document.getElementById('m-global-btn').style.backgroundColor = '#f472b6';
+    document.getElementById('m-global-btn').innerText = 'Add to Dorsa';
+    document.getElementById('m-selected-date-label').style.color = '#f472b6';
+    document.getElementById('calendar-grid').setAttribute('data-active', 'dorsa');
+    renderMonthlyGrid(); 
+});
+
+// عملکرد دکمه جدید تو سایدبار
+document.getElementById('m-global-btn').addEventListener('click', () => {
+    saveTask(document.getElementById('m-global-input').value, activeMonthlyUser, 'date', selectedMonthlyDate);
+    document.getElementById('m-global-input').value = '';
+});
 
 function renderAll() { renderDaily(); renderWeekly(); renderMonthlyGrid(); renderMonthlyBacklog(); }
 
@@ -243,20 +269,41 @@ function renderMonthlyGrid() {
     shamsiDaysArr.forEach(d => {
         const dStr = formatDate(d); const isToday = dStr === todayStr;
         const shamsiNum = toFaDigits(getShamsiParts(d).d); const gregNum = d.getDate();
-        const dayDiv = document.createElement('div'); dayDiv.className = `day-card ${isToday ? 'today-highlight' : ''}`;
+        const shamsiMonthName = faMonthNames[getShamsiParts(d).m - 1];
         
+        const dayDiv = document.createElement('div'); 
+        dayDiv.className = `day-card ${isToday ? 'today-highlight' : ''}`;
+        
+        // دیگه اینپوتی داخل کارت‌ها نیست! 😇
         dayDiv.innerHTML = `
             <div style="display: flex; justify-content: space-between; font-size: 1.15rem; font-weight: bold; margin-bottom: 12px; color: #475569;">
                 <span>${gregNum}</span> <span style="font-family: 'Vazirmatn', sans-serif;">${shamsiNum}</span>
             </div>
-            <div class="small-input-group">
-                <input type="text" id="m-input-${dStr}" placeholder="Add for ${activeMonthlyUser}..." dir="auto">
-                <button id="m-add-${dStr}" style="background-color: ${activeMonthlyUser === 'arad' ? '#38bdf8' : '#f472b6'};">Add</button>
-            </div>
             <div id="m-tasks-${dStr}" class="task-list"></div>
         `;
         grid.appendChild(dayDiv);
-        dayDiv.querySelector(`#m-add-${dStr}`).addEventListener('click', () => saveTask(dayDiv.querySelector(`#m-input-${dStr}`).value, activeMonthlyUser, 'date', dStr));
+        
+        // اگر این روز همون روزیه که انتخاب شده، استایلش رو اعمال کن و نوشته سایدبار رو آپدیت کن
+        if (dStr === selectedMonthlyDate) {
+            dayDiv.classList.add('selected-day-highlight');
+            document.getElementById('m-selected-date-label').innerText = `${gregNum} ${enMonthNames[d.getMonth()]} | ${shamsiNum} ${shamsiMonthName}`;
+        }
+
+        // منطق کلیک کردن روی روز
+        dayDiv.addEventListener('click', (e) => {
+            // اگه روی خود تسک یا دکمه حذفش کلیک کرد، روز رو انتخاب نکن
+            if (e.target.closest('.task-item')) return;
+            
+            // پاک کردن هاله از روی بقیه روزها
+            document.querySelectorAll('.monthly-grid .day-card').forEach(c => c.classList.remove('selected-day-highlight'));
+            // اضافه کردن هاله به روزی که الان کلیک شد
+            dayDiv.classList.add('selected-day-highlight');
+            selectedMonthlyDate = dStr;
+            
+            // آپدیت متن سایدبار
+            document.getElementById('m-selected-date-label').innerText = `${gregNum} ${enMonthNames[d.getMonth()]} | ${shamsiNum} ${shamsiMonthName}`;
+        });
+
         allTasks.filter(t => t.type === 'date' && t.date === dStr && t.owner === activeMonthlyUser).forEach(task => dayDiv.querySelector(`#m-tasks-${dStr}`).appendChild(createItem(task)));
     });
 }
@@ -266,3 +313,26 @@ function renderMonthlyBacklog() {
     allTasks.filter(t => (t.type === 'backlog' || t.type === 'floating') && t.monthId === `${currentShamsi.y}-${currentShamsi.m}`)
             .forEach(task => list.appendChild(createItem(task)));
 }
+
+const mainGrid = document.querySelector('.main-grid'); 
+let currentZoom = 0.8; // همون دیفالتی که گفتی 😇
+
+// اعمال زوم پیش‌فرض به محض لود شدن سایت
+mainGrid.style.setProperty('--z', currentZoom);
+
+mainGrid.addEventListener('wheel', (e) => {
+    // گرفتن پینچ دو انگشتی روی ترک‌پد
+    if (e.ctrlKey) {
+        e.preventDefault(); 
+        
+        const zoomSpeed = 0.006; // سرعت رو یه کم نرم‌تر کردم
+        currentZoom -= e.deltaY * zoomSpeed;
+
+        // محدودیت زوم: نه خیلی له بشه، نه خیلی غول‌پیکر
+        if (currentZoom < 0.5) currentZoom = 0.5;
+        if (currentZoom > 1.5) currentZoom = 1.5;
+
+        // فقط با آپدیت این متغیر، کل تقویم به صورت ایزومتریک جمع و باز میشه! 🤭
+        mainGrid.style.setProperty('--z', currentZoom);
+    }
+}, { passive: false });
