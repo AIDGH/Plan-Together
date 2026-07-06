@@ -243,6 +243,19 @@ body {
     overflow-x: auto; 
 }
 
+.weekly-grid { 
+    /* این خطوط قانونِ خشکِ گرید رو لغو می‌کنن و روزها رو خیلی نرم زیر هم می‌چینن 🪄 */
+    display: flex !important; 
+    flex-direction: column; 
+    gap: 16px; 
+}
+
+/* به کارت‌های هفتگی میگیم به اندازه تسک‌هاتون کِش بیاین */
+.weekly-grid .day-card {
+    height: max-content !important; /* کلید حل مشکل: ارتفاع فقط به اندازه محتوا 😡 */
+    flex-shrink: 0; /* جلوگیری از مچاله شدنِ کارت‌ها */
+}
+
 /* 
 Colors:
     71f6ff

@@ -379,3 +379,23 @@ async function setupMonthlyUser() {
         console.error("خطا در خواندن اطلاعات کاربر:", error);
     }
 }
+async function checkUserRoleAndSetupUI() {
+    const { data: { user }, error } = await supabase.auth.getUser();
+    if (error || !user) return;
+
+    const email = user.email;
+    // کانتینری که دکمه‌های Arad و Dorsa توشه (آیدیش رو دقیق خودت تنظیم کن)
+    const ownerTabs = document.getElementById('owner-tabs-container'); 
+
+    if (email === 'izadidoostarad@gmail.com' || email === 'zabeti.dors@gmail.com') {
+        // شما دو تا هستید! پس دکمه‌ها نمایش داده میشن
+        ownerTabs.style.display = 'flex';
+        // همون منطق قبلی که اگه درسا بود بره رو تب درسا...
+    } else {
+        // 🪄 یوزرِ مهمان وارد شد!
+        ownerTabs.style.display = 'none'; // دکمه‌های شما رو کلاً قایم می‌کنیم
+        currentOwner = user.id; // یا ایمیلش. اینطوری دیتای خودش رو فچ می‌کنه
+        
+        console.log("😇 حالت مهمان فعال شد برای:", email);
+    }
+}
