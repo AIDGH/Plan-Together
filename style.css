@@ -136,6 +136,41 @@ body {
 .login-box button:hover { background-color: #0284c7; }
 .hidden-app { display: none !important; }
 
+/* =========================================
+   Password Eye Toggle Styles
+   ========================================= */
+.password-wrapper {
+    position: relative;
+    width: 100%;
+    margin-bottom: 15px;
+}
+
+.password-wrapper input {
+    margin-bottom: 0 !important; /* جلوگیری از فاصله اضافه */
+    padding-right: 40px !important; /* جا باز کردن سمت راست برای آیکون چشم */
+}
+
+.eye-btn {
+    position: absolute !important;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: transparent !important;
+    border: none;
+    cursor: pointer;
+    padding: 0 !important;
+    width: auto !important;
+    color: #64748b;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.eye-btn:hover {
+    background: transparent !important;
+    color: #38bdf8 !important; /* موقع هاور کردن، رنگش آبی میشه */
+}
+
 /* ffc4de Dor
 
 71f6ff Ar */
