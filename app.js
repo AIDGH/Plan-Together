@@ -82,8 +82,15 @@ document.getElementById('login-btn').addEventListener('click', async () => {
     }
 });
 
-document.getElementById('logout-btn').addEventListener('click', () => {
-    signOut(auth);
+document.getElementById('logout-btn').addEventListener('click', async () => {
+    const email = document.getElementById('login-email').value.trim();
+    const pass = document.getElementById('login-pass').value;
+    try {
+        errorMsg.style.display = 'none';
+        await signInWithEmailAndPassword(auth, email, pass);
+    } catch (error) {
+        errorMsg.style.display = 'block'; 
+    }
 });
 
 // گوش دادن به وضعیت لاگین
