@@ -1,4 +1,4 @@
-# Plan-Together, A Shared Real-Time Planner
+# Plan-Together, a Shared Real-Time Planner
 
 A beautiful, synchronized daily, weekly, and monthly planner built specifically for two (Arad and Dorsa)! This Single Page Application (SPA) allows real-time task management with a custom-built Shamsi (Persian) calendar integration.
 
