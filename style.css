@@ -261,3 +261,19 @@ Colors:
     71f6ff
     ffc4de 
 */
+/* 🚨 استایل تسک‌های انجام‌نشده و تاریخ‌گذشته */
+.task-item.missed-task {
+    background-color: #fef2f2 !important; /* یه قرمز/صورتی خیلی ملایم برای پس‌زمینه */
+    border-right: 4px solid #ef4444 !important; /* یه نوار قرمزِ جیغ سمت راست که داد بزنه! */
+}
+
+/* رنگ متنِ تسک هم یه کم قرمزِ تیره بشه که حس خطر بده */
+.task-item.missed-task label {
+    color: #b91c1c !important; 
+}
+.owner-tag {
+    font-size: 0.8rem;
+    color: #94a3b8; /* یه طوسیِ خیلی باکلاس و ملایم */
+    margin-right: 6px; /* چون متن‌ها راست‌چین هستن، فاصله میده */
+    font-weight: normal;
+}

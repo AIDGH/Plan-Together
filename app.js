@@ -175,8 +175,9 @@ async function saveTask(text, owner, type, dateString = null) {
     }
 }
 
-function createItem(task) {
+function createItem(task, viewType = 'normal') {
     const div = document.createElement('div');
+    const isMissed = !task.completed && task.type === 'date' && task.date < todayStr;
     div.className = `task-item owner-${task.owner} ${task.completed ? 'completed' : ''}`;
     const delBtn = document.createElement('button'); delBtn.className = 'delete-btn'; delBtn.innerText = '-';
     const rightContent = document.createElement('div'); rightContent.className = 'task-content';
@@ -184,12 +185,30 @@ function createItem(task) {
     
     div.appendChild(delBtn); div.appendChild(rightContent);
 
+    if (isMissed) {
+        div.classList.add('missed-task'); 
+    }
+
     rightContent.querySelector('input').addEventListener('change', async (e) => { 
         await supabase.from('tasks').update({ completed: e.target.checked }).eq('id', task.id);
     });
     delBtn.addEventListener('click', async () => { 
         await supabase.from('tasks').delete().eq('id', task.id); 
     });
+
+    const label = document.createElement('label');
+    const ownerName = task.owner === 'arad' ? 'Arad' : 'Dorsa';
+    
+    // حالا دیگه می‌دونه viewType چیه و ارور نمیده 😇
+    if (viewType === 'weekly' && isMissed) {
+        label.innerHTML = `<span class="owner-tag">(${ownerName})</span>`;
+    } else {
+        label.innerHTML = ``;
+    }
+    
+    // اضافه کردن متن به محتوای سمت راست
+    rightContent.appendChild(label); // 🚨 این خط هم تو کدت جا افتاده بود که اضافه کردم!
+    
     return div;
 }
 
@@ -246,7 +265,7 @@ function renderDaily() {
 function renderWeekly() {
     const grid = document.getElementById('weekly-grid'); const floatList = document.getElementById('weekly-floating-tasks');
     grid.innerHTML = ''; floatList.innerHTML = '';
-    allTasks.filter(t => t.type === 'floating' && t.weekId === currentWeekStr).forEach(task => floatList.appendChild(createItem(task)));
+    allTasks.filter(t => t.type === 'floating' && t.weekId === currentWeekStr).forEach(task => floatList.appendChild(createItem(task, 'weekly')));
 
     const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     weekDaysArr.forEach(d => {
@@ -266,7 +285,7 @@ function renderWeekly() {
         grid.appendChild(dayDiv);
         dayDiv.querySelector(`#w-a-${dStr}`).addEventListener('click', () => saveTask(dayDiv.querySelector(`#w-input-${dStr}`).value, 'arad', 'date', dStr));
         dayDiv.querySelector(`#w-d-${dStr}`).addEventListener('click', () => saveTask(dayDiv.querySelector(`#w-input-${dStr}`).value, 'dorsa', 'date', dStr));
-        allTasks.filter(t => t.type === 'date' && t.date === dStr).forEach(task => dayDiv.querySelector(`#w-tasks-${dStr}`).appendChild(createItem(task)));
+        allTasks.filter(t => t.type === 'date' && t.date === dStr).forEach(task => dayDiv.querySelector(`#w-tasks-${dStr}`).appendChild(createItem(task, 'weekly')));
     });
 }
 
