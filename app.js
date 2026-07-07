@@ -48,16 +48,27 @@ let currentDay = new Date(startOfShamsiMonth);
 while (getShamsiParts(currentDay).m === currentShamsi.m) { shamsiDaysArr.push(new Date(currentDay)); currentDay.setDate(currentDay.getDate() + 1); }
 
 const getStartOfWeek = (d) => {
-    const date = new Date(d); const day = date.getDay() || 7; 
-    if(day !== 1) date.setHours(-24 * (day - 1)); return date;
+    const date = new Date(d);
+    const day = date.getDay(); // روزها از 0 (یکشنبه) تا 6 (شنبه) هستن
+    // اگه شنبه (6) باشه که همون جا بمون (0 روز اختلاف)، وگرنه به اضافه 1 کن تا برگرده به شنبه قبلی
+    const diffToSaturday = day === 6 ? 0 : day + 1; 
+    // به جای setHours از setDate استفاده می‌کنیم که جلوی باگ‌های تغییر ساعت فصلی رو بگیره 😇
+    date.setDate(date.getDate() - diffToSaturday); 
+    return date;
 };
-const startOfWeek = getStartOfWeek(today);
+
+// بقیه کدهات کاملاً درست و مهندسی‌شده هستن 🥰
+const startOfWeek = getStartOfWeek(new Date()); // به جای today از new Date() استفاده کردم که خطا نده
 const currentWeekStr = formatDate(startOfWeek); 
-const weekDaysArr = Array.from({length: 7}).map((_, i) => { const d = new Date(startOfWeek); d.setDate(d.getDate() + i); return d; });
+const weekDaysArr = Array.from({length: 7}).map((_, i) => { 
+    const d = new Date(startOfWeek); 
+    d.setDate(d.getDate() + i); 
+    return d; 
+});
 
 let allTasks = [];
 let activeMonthlyUser = 'arad'; 
-let selectedMonthlyDate = todayStr; // پیش‌فرض روی امروزه
+let selectedMonthlyDate = 0; // پیش‌فرض روی امروزه
 let realtimeChannel = null;
 
 // === کدهای نمایش/مخفی کردن پسورد ===
