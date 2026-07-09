@@ -277,3 +277,33 @@ Colors:
     margin-right: 6px; /* چون متن‌ها راست‌چین هستن، فاصله میده */
     font-weight: normal;
 }
+
+/* 🚀 استایل دکمه‌ی جادویی انتقال به امروز */
+.move-btn {
+    background-color: #cbd5e1; 
+    color: #475569; 
+    border: none; 
+    width: 24px; 
+    height: 24px;
+    border-radius: 50%; 
+    display: flex; 
+    justify-content: center; 
+    align-items: center; 
+    cursor: pointer;
+    flex-shrink: 0; 
+    margin-right: 12px; /* فاصله از متن */
+    transition: 0.2s; 
+    font-size: 18px; 
+    line-height: 1;
+    padding: 0;
+}
+
+.move-btn:hover { 
+    background-color: #4bc6ff; /* آبی خوش‌رنگ میشه */
+    color: white; 
+}
+
+/* برای اینکه وقتی دو تا دکمه کنار هم هستن فاصله اضافی نیفته */
+.missed-task .delete-btn {
+    margin-right: 6px !important; 
+}

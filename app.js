@@ -177,21 +177,50 @@ async function saveTask(text, owner, type, dateString = null) {
 
 function createItem(task, viewType = 'normal') {
     const div = document.createElement('div');
-    const isMissed = !task.completed && task.type === 'date' && task.date < todayStr;
     div.className = `task-item owner-${task.owner} ${task.completed ? 'completed' : ''}`;
-    const delBtn = document.createElement('button'); delBtn.className = 'delete-btn'; delBtn.innerText = '-';
-    const rightContent = document.createElement('div'); rightContent.className = 'task-content';
-    rightContent.innerHTML = `<input type="checkbox" ${task.completed ? 'checked' : ''}> <label>${task.text}</label>`;
     
-    div.appendChild(delBtn); div.appendChild(rightContent);
+    const delBtn = document.createElement('button'); 
+    delBtn.className = 'delete-btn'; 
+    delBtn.innerText = '-';
+    
+    const rightContent = document.createElement('div'); 
+    rightContent.className = 'task-content';
+    rightContent.innerHTML = `<input type="checkbox" ${task.completed ? 'checked' : ''}>`;
+    
+    // دکمه دیلیت همیشه اضافه میشه
+    div.appendChild(delBtn); 
 
+    // 🪄 تشخیص تسک میس‌شده و ساخت دکمه نجات
+    const isMissed = !task.completed && task.type === 'date' && task.date < todayStr;
+    
     if (isMissed) {
         div.classList.add('missed-task'); 
+        
+        const moveBtn = document.createElement('button');
+        moveBtn.className = 'move-btn';
+        moveBtn.innerHTML = '⎘'; // Icons: ⤴ ➔ ⎘ ⤻ ⇾ ↻ 🚀 ⏩ 🔄 🪄 🎯 ☀️
+        moveBtn.title = "انتقال به امروز";
+        
+        // دکمه نجات رو کنار دکمه دیلیت می‌ذاریم
+        div.appendChild(moveBtn);
+
+        // جادوی اصلی: آپدیت کردن تاریخِ تسک به امروز 😇
+        moveBtn.addEventListener('click', async () => {
+            await supabase.from('tasks').update({ 
+                date: todayStr, // تاریخ میشه امروز
+                weekId: currentWeekStr, // میاد تو هفته جاری
+                monthId: `${currentShamsi.y}-${currentShamsi.m}` // میاد تو ماه جاری
+            }).eq('id', task.id);
+        });
     }
+
+    // بعدش محتوای راست (چک‌باکس و متن) رو اضافه می‌کنیم
+    div.appendChild(rightContent);
 
     rightContent.querySelector('input').addEventListener('change', async (e) => { 
         await supabase.from('tasks').update({ completed: e.target.checked }).eq('id', task.id);
     });
+    
     delBtn.addEventListener('click', async () => { 
         await supabase.from('tasks').delete().eq('id', task.id); 
     });
@@ -199,15 +228,13 @@ function createItem(task, viewType = 'normal') {
     const label = document.createElement('label');
     const ownerName = task.owner === 'arad' ? 'Arad' : 'Dorsa';
     
-    // حالا دیگه می‌دونه viewType چیه و ارور نمیده 😇
     if (viewType === 'weekly' && isMissed) {
-        label.innerHTML = `<span class="owner-tag">(${ownerName})</span>`;
+        label.innerHTML = `${task.text} <span class="owner-tag">(${ownerName})</span>`;
     } else {
-        label.innerHTML = ``;
+        label.innerHTML = task.text;
     }
     
-    // اضافه کردن متن به محتوای سمت راست
-    rightContent.appendChild(label); // 🚨 این خط هم تو کدت جا افتاده بود که اضافه کردم!
+    rightContent.appendChild(label); 
     
     return div;
 }
@@ -328,7 +355,6 @@ function renderMonthlyGrid() {
             document.getElementById('m-selected-date-label').innerText = `${gregNum} ${enMonthNames[d.getMonth()]} | ${shamsiNum} ${shamsiMonthName}`;
         }
 
-        // منطق کلیک کردن روی روز
         dayDiv.addEventListener('click', (e) => {
             // اگه روی خود تسک یا دکمه حذفش کلیک کرد، روز رو انتخاب نکن
             if (e.target.closest('.task-item')) return;
